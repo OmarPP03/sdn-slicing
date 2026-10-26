@@ -10,7 +10,7 @@ pc1 = lab.new_machine("pc1")
 lab.connect_machine_to_link(pc1.name, "X")
 lab.create_file_from_list(
         [
-            "ip address add 10.0.3.1/16 dev eth0"
+            "ip address add 10.0.3.1/16 dev eth0",
         ],
         "pc1.startup"
     )
@@ -19,7 +19,7 @@ pc2 = lab.new_machine("pc2")
 lab.connect_machine_to_link(pc2.name, "Y")
 lab.create_file_from_list(
         [
-            "ip address add 10.0.3.2/16 dev eth0"
+            "ip address add 10.0.3.2/16 dev eth0",
         ],
         "pc2.startup"
     )
@@ -28,7 +28,7 @@ pc3 = lab.new_machine("pc3")
 lab.connect_machine_to_link(pc3.name, "W")
 lab.create_file_from_list(
         [
-            "ip address add 10.0.3.3/16 dev eth0"
+            "ip address add 10.0.3.3/16 dev eth0",
         ],
         "pc3.startup"
     )
@@ -37,7 +37,7 @@ pc4 = lab.new_machine("pc4")
 lab.connect_machine_to_link(pc4.name, "Z")
 lab.create_file_from_list(
         [
-            "ip address add 10.0.3.4/16 dev eth0"
+            "ip address add 10.0.3.4/16 dev eth0",
         ],
         "pc4.startup"
     )
@@ -54,6 +54,10 @@ lab.connect_machine_to_link(s1.name, "S")
 lab.create_file_from_list(
     [
         "ip address add 20.0.1.1/24 dev eth4",
+        # Add link capacities to each switch, just like the lab topology
+        "tc qdisc add dev eth1 root tbf rate 20mbit burst 32kb latency 50ms",
+        "tc qdisc add dev eth2 root tbf rate 7mbit burst 32kb latency 50ms",
+        "tc qdisc add dev eth3 root tbf rate 5mbit burst 32kb latency 50ms",
         "/usr/share/openvswitch/scripts/ovs-ctl --system-id=random start",
         "ovs-vsctl add-br s1",
         # Fail mode: what if i dont find a controller?
@@ -79,6 +83,9 @@ lab.connect_machine_to_link(s2.name, "S")
 lab.create_file_from_list(
     [
         "ip address add 20.0.1.2/24 dev eth4",
+        "tc qdisc add dev eth1 root tbf rate 20mbit burst 32kb latency 50ms",
+        "tc qdisc add dev eth2 root tbf rate 5mbit burst 32kb latency 50ms",
+        "tc qdisc add dev eth3 root tbf rate 10mbit burst 32kb latency 50ms",
         "/usr/share/openvswitch/scripts/ovs-ctl --system-id=random start",
         "ovs-vsctl add-br s2",
         "ovs-vsctl set-fail-mode s2 secure", 
@@ -101,6 +108,9 @@ lab.connect_machine_to_link(s3.name, "S")
 lab.create_file_from_list(
     [
         "ip address add 20.0.1.3/24 dev eth4",
+        "tc qdisc add dev eth1 root tbf rate 7mbit burst 32kb latency 50ms",
+        "tc qdisc add dev eth2 root tbf rate 5mbit burst 32kb latency 50ms",
+        "tc qdisc add dev eth3 root tbf rate 10mbit burst 32kb latency 50ms",
         "/usr/share/openvswitch/scripts/ovs-ctl --system-id=random start",
         "ovs-vsctl add-br s3",
         "ovs-vsctl set-fail-mode s3 secure", 
@@ -123,6 +133,9 @@ lab.connect_machine_to_link(s4.name, "S")
 lab.create_file_from_list(
     [
         "ip address add 20.0.1.4/24 dev eth4",
+        "tc qdisc add dev eth1 root tbf rate 5mbit burst 32kb latency 50ms",
+        "tc qdisc add dev eth2 root tbf rate 10mbit burst 32kb latency 50ms",
+        "tc qdisc add dev eth3 root tbf rate 10mbit burst 32kb latency 50ms",
         "/usr/share/openvswitch/scripts/ovs-ctl --system-id=random start",
         "ovs-vsctl add-br s4",
         "ovs-vsctl set-fail-mode s4 secure", 
@@ -142,7 +155,8 @@ ctr = lab.new_machine("ctr", image="kathara/ryu")
 lab.connect_machine_to_link(ctr.name, "S")
 lab.create_file_from_list(
         [
-            "ip address add 20.0.1.100/24 dev eth0"
+            "ip address add 20.0.1.100/24 dev eth0",
+            "ryu-manager /shared/simple_switch_13.py &"
         ],
         "ctr.startup"
     )
