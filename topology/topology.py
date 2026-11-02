@@ -1,16 +1,3 @@
-SDN_IMAGE = "kathara/sdn"
-RYU_IMAGE = "kathara/ryu"
-WSH_IMAGE = "lscr.io/linuxserver/wireshark"
-
-CTR_LINK = "S"
-CTR_IP = "20.0.1.100"
-OF_VERSION = "OpenFlow13"
-
-HOST_PREFIX = "/16"
-SWITCH_PREFIX = "/24"
-
-TC_BURST = "32kb"
-TC_LATENCY = "50ms"
 
 HOSTS = {
     "pc1" : { "ip" : "10.0.3.1", "mac" : "02:00:00:00:00:01", "switch" : "s1"},
