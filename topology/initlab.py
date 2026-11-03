@@ -3,7 +3,7 @@ from Kathara.manager.Kathara import Kathara
 
 from pathlib import Path
 
-from topology import SWITCHES, HOSTS, LINKS
+from topology.network import SWITCHES, HOSTS, LINKS
 
 # Global variables for network configuration
 HOST_IMAGE = "kathara/base"
@@ -25,12 +25,12 @@ LAB_DIR = Path(__file__).resolve().parent.parent / "lab"
 LAB_DIR.mkdir(exist_ok=True)
 
 # Create the Lab object and port map
-def create_scenario() -> tuple[Lab, dict]:
+def create_scenario() -> Lab:
 
     # Create scenario
     lab = Lab(None, path=str(LAB_DIR))
 
-    # ports[switch][neighbour] = OpenFlow port number
+    # ports[switch][neighbour_switch] = OpenFlow port number
     ports = {sw: {} for sw in SWITCHES}
     # tc[switch] = tc commands for each switch neighbour
     tc = {sw: [] for sw in SWITCHES}
@@ -173,8 +173,20 @@ def create_scenario() -> tuple[Lab, dict]:
         ports=["3000:3000/tcp"])
     lab.connect_machine_to_link(wsh.name, f"{CTR_LINK}")
 
-    return lab, ports
+    return lab
     
+def get_ports() -> dict:
+    ports = {sw: {} for sw in SWITCHES}
+    # First the host ports. If for 1 switch = 1 host, then it will always be port one.
+    for hosts, i in HOSTS.items():
+        switch = i["switch"]
+        # len(ports[sw]) + 1 is the next free port on that switch
+        ports[switch][hosts] = len(ports[switch]) + 1
+    for sw1, sw2, cap in LINKS:
+        ports[sw1][sw2] = len(ports[sw1]) + 1
+        ports[sw2][sw1] = len(ports[sw2]) + 1
+    return ports
+
 # Deploy lab 
 def deploy_scenario(lab: Lab) -> None:
     Kathara.get_instance().deploy_lab(lab=lab)
@@ -182,7 +194,7 @@ def deploy_scenario(lab: Lab) -> None:
 
 
 def main():
-    lab, ports = create_scenario()
+    lab = create_scenario()
     deploy_scenario(lab)
 
 if __name__ == '__main__':

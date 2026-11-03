@@ -1,4 +1,6 @@
 import requests
+from topology.network import HOSTS, SWITCHES
+from topology.initlab import get_ports
 
 URL = "http://localhost:8080/stats/flowentry/add"
 DEF_PRIORITY = 100
@@ -17,21 +19,41 @@ def add_rule(dpid : int, match : dict, out_port : int, cookie : int) -> None:
         "match": match,
         "actions": [{"type": "OUTPUT", "port": out_port}],      
         }
-    response = requests.post(f"{URL}", json=rule)
+    response = requests.post(URL, json=rule)
     if response.status_code != 200:
         raise RuntimeError(f"{dpid}: {response.status_code} {response.text}")
 
+def add_flow(path : list, cookie : int) -> None:
+
+    # Retrive ports list
+    ports = get_ports()
+
+    # path = [src_host, switch, ..., switch, dst_host]
+    src, dst = path[0], path[-1]
+    src_ip, dst_ip = HOSTS[src]["ip"], HOSTS[dst]["ip"]
+
+    for i in range(1, len(path) - 1):
+        curr, nxt, prev = path[i], path[i+1], path[i-1]
+        # source to dest path
+        add_rule(SWITCHES[curr]["dpid"], {
+            "in_port": ports[curr][prev],
+            "eth_type": ETH_TYPE,
+            "ipv4_src": src_ip,
+            "ipv4_dst": dst_ip
+        }, ports[curr][nxt], cookie)
+        # dest to source path
+        add_rule(SWITCHES[curr]["dpid"], {
+            "in_port": ports[curr][nxt],
+            "eth_type": ETH_TYPE,
+            "ipv4_src": dst_ip,
+            "ipv4_dst": src_ip
+        }, ports[curr][prev], cookie)
+
+
 
 def main():
-    match_pc1_to_s4 = {"in_port": 1, "eth_type": 2048, "ipv4_src": "10.0.3.1", "ipv4_dst": "10.0.3.4"}
-    match_s4_to_pc4 = {"in_port": 2, "eth_type": 2048, "ipv4_src": "10.0.3.1", "ipv4_dst": "10.0.3.4"}
-    match_pc4_to_s1 = {"in_port": 1, "eth_type": 2048, "ipv4_src": "10.0.3.4", "ipv4_dst": "10.0.3.1"}
-    match_s1_to_pc1 = {"in_port": 4, "eth_type": 2048, "ipv4_src": "10.0.3.4", "ipv4_dst": "10.0.3.1"}
-    add_rule(1, match_pc1_to_s4, 4, cookie=1)
-    add_rule(4, match_s4_to_pc4, 1, cookie=1)
-    add_rule(4, match_pc4_to_s1, 2, cookie=1)
-    add_rule(1, match_s1_to_pc1, 1, cookie=1)
-
+    path = ["pc1", "s1", "s4", "pc4"]
+    add_flow(path, 1)
 
 if __name__ == '__main__':
     main()
