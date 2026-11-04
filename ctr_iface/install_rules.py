@@ -2,7 +2,8 @@ import requests
 from topology.network import HOSTS, SWITCHES
 from topology.initlab import get_ports
 
-URL = "http://localhost:8080/stats/flowentry/add"
+URL_ADD = "http://localhost:8080/stats/flowentry/add"
+URL_DEL = "http://localhost:8080/stats/flowentry/delete"
 DEF_PRIORITY = 100
 IDLE_TIMEOUT = 0
 HARD_TIMEOUT = 0
@@ -19,7 +20,7 @@ def add_rule(dpid : int, match : dict, out_port : int, cookie : int) -> None:
         "match": match,
         "actions": [{"type": "OUTPUT", "port": out_port}],      
         }
-    response = requests.post(URL, json=rule)
+    response = requests.post(URL_ADD, json=rule)
     if response.status_code != 200:
         raise RuntimeError(f"{dpid}: {response.status_code} {response.text}")
 
@@ -49,11 +50,38 @@ def add_flow(path : list, cookie : int) -> None:
             "ipv4_dst": src_ip
         }, ports[curr][prev], cookie)
 
+        print("Added " + "".join(path) + " flow with cookie " + str(cookie) + " succesfully.")
+
+
+def delete_rule(dpid : int, cookie : int) -> None:
+
+    rule = {
+        "dpid": dpid,
+        "cookie": cookie,
+        "cookie_mask": 0xFFFFFFFFFFFFFFFF, # Compare all 64 bits
+    }
+    response = requests.post(URL_DEL, json=rule)
+    if response.status_code != 200:
+        raise RuntimeError(f"{dpid}: {response.status_code} {response.text}")
+
+def delete_flow(cookie : int) -> None:
+
+    for switches in SWITCHES.values():
+        delete_rule(switches["dpid"], cookie)
+
+    print("Deleted path associated with " + str(cookie) + " cookie succesfully.")
+
+
+
 
 
 def main():
-    path = ["pc1", "s1", "s4", "pc4"]
-    add_flow(path, 1)
+    path1 = ["pc1", "s1", "s4", "pc4"]
+    path2 = ["pc2", "s2", "s3", "pc3"]
+    add_flow(path1, 1)
+    add_flow(path2, 2)
+    delete_flow(1)
+    delete_flow(2)
 
 if __name__ == '__main__':
     main()
