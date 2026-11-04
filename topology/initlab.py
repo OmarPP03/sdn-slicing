@@ -89,7 +89,6 @@ def create_scenario() -> Lab:
             tc[firstsw].append(f"tc qdisc add dev eth{ethface.num} root tbf rate {cap}mbit burst {TC_BURST} latency {TC_LATENCY}")
         
 
-
     # Swtich configuaration
     for sw, i in SWITCHES.items():
         _, ctrlink = lab.connect_machine_to_link(sw, CTR_LINK)
