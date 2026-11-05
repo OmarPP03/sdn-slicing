@@ -6,7 +6,7 @@ class Allocator:
     
     def __init__(self, links):
                  
-        self.flows = {}          # associate cookie with flow inserted
+        self.flows = {}          # associate cookie with flow inserted. { 1 : {}}
         self.next_cookie = 1     # variable indicating n of flows inserted in this scenario
         self.graph = {}          # weighted network graph
         
@@ -25,26 +25,22 @@ class Allocator:
 
     # Request the path and save best path, subtracting capacities. Return path and cookie.
     def request(self, src : str, dst : str, rate : int ) -> tuple[list, int]:
-        
-        if path is None:
-            raise RuntimeError(f"No path from {src} to {dst} available for the requested rate.")
 
         self.check_path(src, dst)
-
-        cookie = self.next_cookie
+        
         src_switch = HOSTS[src]["switch"]
         dst_switch = HOSTS[dst]["switch"]
 
         path = find_path(self.graph, src_switch, dst_switch, rate)
-        full_path = [src] + path + [dst]
+
+        cookie = self.next_cookie
         
-        print(f"\nAdding flow {full_path} with rate {rate}.")
-
         for sw1, sw2 in zip(path, path[1:]):
-            bfr = self.graph[sw1][sw2]["residual"]
+            # bfr = self.graph[sw1][sw2]["residual"]
             self.graph[sw1][sw2]["residual"] -= rate 
-            print(f"{sw1} --> {sw2}: Capacity is now {self.graph[sw1][sw2]['residual']} from {bfr}.")
+            # print(f"{sw1} --> {sw2}: Capacity is now {self.graph[sw1][sw2]['residual']} from {bfr}.")
 
+        full_path = [src] + path + [dst]
         self.flows[cookie] = {"src": src, "dst": dst, "rate": rate, "path": full_path}
     
         self.next_cookie += 1
@@ -66,6 +62,10 @@ class Allocator:
             print(f"{sw1} --> {sw2}: Capacity is now {str(self.graph[sw1][sw2]['residual'])} from {str(bfr)}.")
 
         return self.flows.pop(cookie)
+
+    def to_string_flow(self, cookie: int):
+        print(f"{self.flows[cookie]['path']}")
+
 
 
 # Pseudo BFS. Uses src as sender hosts switch and dst as receiver hosts switch, host managign is left to request()

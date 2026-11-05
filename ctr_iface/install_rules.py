@@ -4,6 +4,7 @@ from topology.initlab import get_ports
 
 URL_ADD = "http://localhost:8080/stats/flowentry/add"
 URL_DEL = "http://localhost:8080/stats/flowentry/delete"
+URL_CLEAR = "http://localhost:8080/stats/flowentry/clear"
 DEF_PRIORITY = 100
 IDLE_TIMEOUT = 0
 HARD_TIMEOUT = 0
@@ -50,7 +51,7 @@ def add_flow(path : list, cookie : int) -> None:
             "ipv4_dst": src_ip
         }, ports[curr][prev], cookie)
 
-        print("Added " + "".join(path) + " flow with cookie " + str(cookie) + " succesfully.")
+        # print("Added " + "".join(path) + " flow with cookie " + str(cookie) + " succesfully.")
 
 
 def delete_rule(dpid : int, cookie : int) -> None:
@@ -58,7 +59,7 @@ def delete_rule(dpid : int, cookie : int) -> None:
     rule = {
         "dpid": dpid,
         "cookie": cookie,
-        "cookie_mask": 0xFFFFFFFFFFFFFFFF, # Compare all 64 bits
+        "cookie_mask": 0xFFFFFFFFFFFFFFFF # Compare all 64 bits
     }
     response = requests.post(URL_DEL, json=rule)
     if response.status_code != 200:
@@ -70,6 +71,17 @@ def delete_flow(cookie : int) -> None:
         delete_rule(switches["dpid"], cookie)
 
     print("Deleted path associated with " + str(cookie) + " cookie succesfully.")
+
+def clear_flow_table(dpid: int) -> None:
+
+    response = requests.delete(f"{URL_CLEAR}/{dpid}", timeout=5)
+    if response.status_code != 200:
+        raise RuntimeError(f"Could not clear flow table of switch {dpid}: {response.status_code} {response.text}")
+
+def clear_all_tables() -> None:
+
+    for i in SWITCHES.values():
+        clear_flow_table(i["dpid"])
 
 
 def main():
