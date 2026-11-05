@@ -70,7 +70,7 @@ def delete_flow(cookie : int) -> None:
         delete_rule(switches["dpid"], cookie)
 
     print("Deleted path associated with " + str(cookie) + " cookie succesfully.")
-    
+
 
 def main():
     path1 = ["pc1", "s1", "s4", "pc4"]

@@ -1,13 +1,14 @@
-from ctr_iface.install_rules import add_flow
+
+from topology.network import HOSTS
 
 # Use a class to keep the network state consistent with flow table changes, cookies, ecc..
 class Allocator:
     
     def __init__(self, links):
                  
-        self.flows = {}             # associate cookie with flow inserted
-        self.current_cookie = 1     # variable indicating n of flows inserted in this scenario
-        self.graph = {}
+        self.flows = {}          # associate cookie with flow inserted
+        self.next_cookie = 1     # variable indicating n of flows inserted in this scenario
+        self.graph = {}          # weighted network graph
         
         # Build the graph using dict instead of networkx to use our own allocation algorithm
         for sw1, sw2, cap in links:
@@ -16,20 +17,97 @@ class Allocator:
             self.graph.setdefault(sw2, {})[sw1] = edge
     
         
-    # Use inverse Edmonds-Karp? https://en.wikipedia.org/wiki/Edmonds%E2%80%93Karp_algorithm
-    def find_path(graph: dict, src: str, dst: str, rate: int) -> list | None: 
-        
-        return None
-        
+    # Check if src -> dst already exists as dst -> src in flows dict
+    def check_path(self, src: str, dst: str) -> None:
+        for cookie, f in self.flows.items():
+            if {f["src"], f["dst"]} == {src, dst}:
+                raise RuntimeError(f"A flow between {src} and {dst} already exists (cookie {cookie}). Delete it first.")
+
     # Request the path and save best path, subtracting capacities. Return path and cookie.
     def request(self, src : str, dst : str, rate : int ) -> tuple[list, int]:
         
-        path = find_path(self.graph, src, dst, rate)
-        if path == None:
-            exit(0)
-        reutrn path, 1
-        # 1.  Allocation algorithm: decide best path and allocate path = [src, ..., dst];
-        # 1.1 If no allocation possibile: throw exception
-        # 2.  Remove capacities at links, current cookie += 1;
-    def release(self, cookie : int):
-        print(".")
+        if path is None:
+            raise RuntimeError(f"No path from {src} to {dst} available for the requested rate.")
+
+        self.check_path(src, dst)
+
+        cookie = self.next_cookie
+        src_switch = HOSTS[src]["switch"]
+        dst_switch = HOSTS[dst]["switch"]
+
+        path = find_path(self.graph, src_switch, dst_switch, rate)
+        full_path = [src] + path + [dst]
+        
+        print(f"\nAdding flow {full_path} with rate {rate}.")
+
+        for sw1, sw2 in zip(path, path[1:]):
+            bfr = self.graph[sw1][sw2]["residual"]
+            self.graph[sw1][sw2]["residual"] -= rate 
+            print(f"{sw1} --> {sw2}: Capacity is now {self.graph[sw1][sw2]['residual']} from {bfr}.")
+
+        self.flows[cookie] = {"src": src, "dst": dst, "rate": rate, "path": full_path}
+    
+        self.next_cookie += 1
+        return full_path, cookie
+    
+    def release(self, cookie : int) -> dict:
+        
+        if cookie not in self.flows:
+            raise RuntimeError("No flow associated with that cookie.")
+
+        full_path = self.flows[cookie]["path"]
+        path_list = full_path[1:-1]
+        rate = self.flows[cookie]["rate"]
+
+        print(f"\nEliminating flow {full_path} with rate {rate}.")
+        for sw1, sw2 in zip(path_list, path_list[1:]):
+            bfr = self.graph[sw1][sw2]["residual"]
+            self.graph[sw1][sw2]["residual"] += rate
+            print(f"{sw1} --> {sw2}: Capacity is now {str(self.graph[sw1][sw2]['residual'])} from {str(bfr)}.")
+
+        return self.flows.pop(cookie)
+
+
+# Pseudo BFS. Uses src as sender hosts switch and dst as receiver hosts switch, host managign is left to request()
+def find_path(graph: dict, src: str, dst: str, rate: int) -> list | None: 
+    
+    # Only source is visited
+    visited = {src}
+    # Create a queue for bfs starting from source 
+    queue = []
+    queue.append(src)
+
+    # Keep a list of previous switches in the path, to build the src -> dst best path
+    prev = {}
+
+    while queue:
+        s = queue.pop(0)
+
+        # Found dst in best path, build the path and return it
+        if s == dst:
+            path = [dst]
+            while path[-1] != src:
+                path.append(prev[path[-1]])
+            path.reverse()
+            return path
+
+        for i in graph[s]:
+            if graph[s][i]["residual"] < rate or i in visited:
+                continue
+            else:
+                prev[i] = s
+                visited.add(i)
+                queue.append(i)
+    return None
+
+
+from topology.network import LINKS
+
+def main():
+    a = Allocator(LINKS)
+    a.request("pc1", "pc4", 10)
+    a.release(1)
+    a.request("pc4", "pc1", 10)
+
+if __name__ == "__main__":
+    main()
