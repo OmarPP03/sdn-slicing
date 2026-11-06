@@ -78,6 +78,7 @@ def clear_flow_table(dpid: int) -> None:
     if response.status_code != 200:
         raise RuntimeError(f"Could not clear flow table of switch {dpid}: {response.status_code} {response.text}")
 
+# Probably not its place
 def clear_all_tables() -> None:
 
     for i in SWITCHES.values():

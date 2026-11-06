@@ -3,14 +3,19 @@ from topology.network import HOSTS
 
 # Use a class to keep the network state consistent with flow table changes, cookies, ecc..
 class Allocator:
-    
-    def __init__(self, links):
+
+    # Admission = True --> program works as inteded
+    # Admission = Fase --> request always says yes
+    def __init__(self, links, admission: bool=False):
                  
+        self.admission = admission
+
         self.flows = {}          # associate cookie with flow inserted. { 1 : {}}
         self.next_cookie = 1     # variable indicating n of flows inserted in this scenario
         self.graph = {}          # weighted network graph
         
         # Build the graph using dict instead of networkx to use our own allocation algorithm
+        # { "s1": { "s2": { "capacity" : 20, "residual": 20 } "s3": { "capacity": 10, "residual": 10 }}}
         for sw1, sw2, cap in links:
             edge = {"capacity": cap, "residual": cap}
             self.graph.setdefault(sw1, {})[sw2] = edge
@@ -31,7 +36,12 @@ class Allocator:
         src_switch = HOSTS[src]["switch"]
         dst_switch = HOSTS[dst]["switch"]
 
-        path = find_path(self.graph, src_switch, dst_switch, rate)
+        min_rate = rate if self.admission else 0 
+
+        path = find_path(self.graph, src_switch, dst_switch, min_rate)
+
+        if path is None:
+            raise RuntimeError(f"No path available from {src} to {dst} with {rate}Mbps available")
 
         cookie = self.next_cookie
         
@@ -48,20 +58,24 @@ class Allocator:
     
     def release(self, cookie : int) -> dict:
         
-        if cookie not in self.flows:
+        if not self.flow_exists(cookie):
             raise RuntimeError("No flow associated with that cookie.")
 
         full_path = self.flows[cookie]["path"]
         path_list = full_path[1:-1]
         rate = self.flows[cookie]["rate"]
 
-        print(f"\nEliminating flow {full_path} with rate {rate}.")
+        # print(f"\nEliminating flow {full_path} with rate {rate}.\n")
         for sw1, sw2 in zip(path_list, path_list[1:]):
-            bfr = self.graph[sw1][sw2]["residual"]
+            # bfr = self.graph[sw1][sw2]["residual"]
             self.graph[sw1][sw2]["residual"] += rate
-            print(f"{sw1} --> {sw2}: Capacity is now {str(self.graph[sw1][sw2]['residual'])} from {str(bfr)}.")
+            # print(f"{sw1} --> {sw2}: Capacity is now {str(self.graph[sw1][sw2]['residual'])} from {str(bfr)}.")
 
         return self.flows.pop(cookie)
+
+    def flow_exists(self, cookie: int) -> bool:
+
+        return cookie in self.flows
 
     def to_string_flow(self, cookie: int):
         print(f"{self.flows[cookie]['path']}")
