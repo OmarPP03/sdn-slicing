@@ -5,22 +5,26 @@ from pathlib import Path
 
 from topology.network import SWITCHES, HOSTS, LINKS
 
-# Global variables for network configuration
+# Docker images
 HOST_IMAGE = "kathara/base"
 SDN_IMAGE = "kathara/sdn"
 RYU_IMAGE = "kathara/ryu"
 WSH_IMAGE = "lscr.io/linuxserver/wireshark"
 
+# Controller variables
 CTR_LINK = "S"
 CTR_IP = "20.0.1.100"
 OF_VERSION = "OpenFlow13"
 
+# Devices prefix 
 HOST_PREFIX = "/16"
 SWITCH_PREFIX = "/24"
 
+# tc configuration 
 TC_BURST = "32kb"
 TC_LATENCY = "50ms"
 
+# Path for lab directory (.startup files)
 LAB_DIR = Path(__file__).resolve().parent.parent / "lab"
 LAB_DIR.mkdir(exist_ok=True)
 
@@ -49,12 +53,11 @@ def create_scenario() -> Lab:
         # Connect host and switch to the same link in eth0
         link = f"{h}-{i['switch']}"
         lab.connect_machine_to_link(h, link, mac_address=i['mac'])
-        # connect_machine_to_link returns the interface on the second 
-        # argument of the returning tuple
+        # connect_machine_to_link returns the interface on the second argument of the returning tuple
         _, ethface = lab.connect_machine_to_link(i['switch'], link)
         ports[i['switch']][h] = ethface.num + 1  # Linux interface = eth0, while OpenFlow interface is 1
 
-        # Write the startup file for every host
+        # Write the startup file for every host, ARP tables
         startup =  [f"ip address add {i['ip']}{HOST_PREFIX} dev eth0"]
         for h_other, i_other in HOSTS.items():
             if h_other != h:
@@ -92,12 +95,15 @@ def create_scenario() -> Lab:
     # Swtich configuaration
     for sw, i in SWITCHES.items():
         _, ctrlink = lab.connect_machine_to_link(sw, CTR_LINK)
+        # Static switch entries, self_ip assign, install OpenFlow protocol
         startup = [
             f"ip address add {i['ip']}{SWITCH_PREFIX} dev eth{ctrlink.num}",
             "/usr/share/openvswitch/scripts/ovs-ctl --system-id=random start",
             f"ovs-vsctl add-br {sw}",
             f"ovs-vsctl set-fail-mode {sw} secure",
         ]
+
+        # Set up collision domains, datapath-id for OF, connect to Ryu controller
         for port in (ports[sw].values()):
             startup.append(f"ovs-vsctl add-port {sw} eth{port - 1}")
         startup += tc[sw]
@@ -158,7 +164,7 @@ def create_scenario() -> Lab:
     lab.create_file_from_list(
             [
                 f"ip address add {CTR_IP}{SWITCH_PREFIX} dev eth0",
-                # Send ryu stderr to log for debugging
+                # Use ryu.app.ofctl_rest to use the OF REST API. Send ryu stderr to log for debugging
                 "ryu-manager ryu.app.ofctl_rest > /var/log/ryu.log 2>&1 &"
             ],
             "ctr.startup"
@@ -174,6 +180,7 @@ def create_scenario() -> Lab:
 
     return lab
     
+# Used by add_flow() in install_rules.py to get the port map in the whole network
 def get_ports() -> dict:
     ports = {sw: {} for sw in SWITCHES}
     # First the host ports. If for 1 switch = 1 host, then it will always be port one.

@@ -4,11 +4,11 @@ from topology.network import HOSTS
 # Use a class to keep the network state consistent with flow table changes, cookies, ecc..
 class Allocator:
 
-    # Admission = True --> program works as inteded
-    # Admission = Fase --> request always says yes
-    def __init__(self, links, admission: bool=False):
+    def __init__(self, links, with_app: bool):
                  
-        self.admission = admission
+        # with_app = True ---> program works as inteded
+        # with_app = False --> request always says yes
+        self.with_app = with_app
 
         self.flows = {}          # associate cookie with flow inserted. { 1 : {}}
         self.next_cookie = 1     # variable indicating n of flows inserted in this scenario
@@ -36,10 +36,12 @@ class Allocator:
         src_switch = HOSTS[src]["switch"]
         dst_switch = HOSTS[dst]["switch"]
 
-        min_rate = rate if self.admission else 0 
+        # with_app check. float("-inf") = minus infinity
+        min_rate = rate if self.with_app else float("-inf")
 
         path = find_path(self.graph, src_switch, dst_switch, min_rate)
 
+        # Raise if there is no path for requested capacity
         if path is None:
             raise RuntimeError(f"No path available from {src} to {dst} with {rate}Mbps available")
 
@@ -47,9 +49,10 @@ class Allocator:
         
         for sw1, sw2 in zip(path, path[1:]):
             # bfr = self.graph[sw1][sw2]["residual"]
-            self.graph[sw1][sw2]["residual"] -= rate 
+            self.graph[sw1][sw2]["residual"] -= rate # Remove requested capacity from link
             # print(f"{sw1} --> {sw2}: Capacity is now {self.graph[sw1][sw2]['residual']} from {bfr}.")
 
+        # Combine whole path
         full_path = [src] + path + [dst]
         self.flows[cookie] = {"src": src, "dst": dst, "rate": rate, "path": full_path}
     
@@ -58,10 +61,12 @@ class Allocator:
     
     def release(self, cookie : int) -> dict:
         
+        # Raise if cookie does not exists
         if not self.flow_exists(cookie):
             raise RuntimeError("No flow associated with that cookie.")
 
         full_path = self.flows[cookie]["path"]
+        # Remove src and dst host
         path_list = full_path[1:-1]
         rate = self.flows[cookie]["rate"]
 
@@ -73,12 +78,9 @@ class Allocator:
 
         return self.flows.pop(cookie)
 
+
     def flow_exists(self, cookie: int) -> bool:
-
         return cookie in self.flows
-
-    def to_string_flow(self, cookie: int):
-        print(f"{self.flows[cookie]['path']}")
 
 
 
@@ -106,6 +108,7 @@ def find_path(graph: dict, src: str, dst: str, rate: int) -> list | None:
             return path
 
         for i in graph[s]:
+            # Skip if link has less rate then requested or already visited
             if graph[s][i]["residual"] < rate or i in visited:
                 continue
             else:
@@ -118,7 +121,7 @@ def find_path(graph: dict, src: str, dst: str, rate: int) -> list | None:
 from topology.network import LINKS
 
 def main():
-    a = Allocator(LINKS)
+    a = Allocator(LINKS, with_app=True)
     a.request("pc1", "pc4", 10)
     a.release(1)
     a.request("pc4", "pc1", 10)

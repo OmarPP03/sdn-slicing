@@ -2,6 +2,7 @@ import requests
 from topology.network import HOSTS, SWITCHES
 from topology.initlab import get_ports
 
+# POST URI for adding flows to datapath_id, deleting and clearing all flows for datapath_id
 URL_ADD = "http://localhost:8080/stats/flowentry/add"
 URL_DEL = "http://localhost:8080/stats/flowentry/delete"
 URL_CLEAR = "http://localhost:8080/stats/flowentry/clear"
@@ -21,6 +22,8 @@ def add_rule(dpid : int, match : dict, out_port : int, cookie : int) -> None:
         "match": match,
         "actions": [{"type": "OUTPUT", "port": out_port}],      
         }
+    
+    # POST call
     response = requests.post(URL_ADD, json=rule)
     if response.status_code != 200:
         raise RuntimeError(f"{dpid}: {response.status_code} {response.text}")
@@ -36,14 +39,14 @@ def add_flow(path : list, cookie : int) -> None:
 
     for i in range(1, len(path) - 1):
         curr, nxt, prev = path[i], path[i+1], path[i-1]
-        # source to dest path
+        # src to dest path
         add_rule(SWITCHES[curr]["dpid"], {
             "in_port": ports[curr][prev],
             "eth_type": ETH_TYPE,
             "ipv4_src": src_ip,
             "ipv4_dst": dst_ip
         }, ports[curr][nxt], cookie)
-        # dest to source path
+        # dst to src path
         add_rule(SWITCHES[curr]["dpid"], {
             "in_port": ports[curr][nxt],
             "eth_type": ETH_TYPE,
@@ -61,6 +64,7 @@ def delete_rule(dpid : int, cookie : int) -> None:
         "cookie": cookie,
         "cookie_mask": 0xFFFFFFFFFFFFFFFF # Compare all 64 bits
     }
+
     response = requests.post(URL_DEL, json=rule)
     if response.status_code != 200:
         raise RuntimeError(f"{dpid}: {response.status_code} {response.text}")
@@ -78,9 +82,10 @@ def clear_flow_table(dpid: int) -> None:
     if response.status_code != 200:
         raise RuntimeError(f"Could not clear flow table of switch {dpid}: {response.status_code} {response.text}")
 
-# Probably not its place
+
 def clear_all_tables() -> None:
 
+    # Used by the app to delete all flow tables when initiated
     for i in SWITCHES.values():
         clear_flow_table(i["dpid"])
 

@@ -7,6 +7,7 @@ class App():
     
     def __init__(self, links):
 
+        # Clear all flow tables in the network
         clear_all_tables()
         self.allocator = Allocator(links)
 
@@ -35,6 +36,7 @@ class App():
 
         print("### ALLOCATION TERMINATED SUCCESSFULLY!")
 
+        # Save cookie for the CLI app
         return cookie
 
     def delete(self, cookie: int):
@@ -47,10 +49,11 @@ class App():
 
         print("### DELETED ROUTE SUCCESFULLY! ###")
 
+    # Show active allocated flows
     def show(self) -> None:
-        print("Active flows:")
+        print("### ACTIVE FLOWS: ###")
         if not self.allocator.flows:
-            print("  (none)")
+            print("### NO FLOWS ALLOCATED. ###")
         for cookie, f in self.allocator.flows.items():
             print(f"  [{cookie}] {f['src']} -> {f['dst']}  {f['rate']} Mbps  via {' -> '.join(f['path'])}")
 
@@ -59,10 +62,13 @@ class App():
             res = self.allocator.graph[sw1][sw2]["residual"]
             print(f"  {sw1}-{sw2}: {res:>3} / {cap} Mbps")
 
+# Command line app
 def run_cli(app: App):
 
+    # Helper
     print("\nUsage: add [source_host] [dest_host] [rate_in_mbps] | delete [cookie] | show | quit ")
 
+    # Input to command
     while True:
         cmd = input(" > ").split()
         if not cmd:
