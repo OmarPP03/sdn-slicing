@@ -6,7 +6,8 @@ HOSTS = {
     "pc1" : { "ip" : "10.0.3.1", "mac" : "02:00:00:00:00:01", "switch" : "s1"},
     "pc2" : { "ip" : "10.0.3.2", "mac" : "02:00:00:00:00:02", "switch" : "s2"},
     "pc3" : { "ip" : "10.0.3.3", "mac" : "02:00:00:00:00:03", "switch" : "s3"},
-    "pc4" : { "ip" : "10.0.3.4", "mac" : "02:00:00:00:00:04", "switch" : "s4"}
+    "pc4" : { "ip" : "10.0.3.4", "mac" : "02:00:00:00:00:04", "switch" : "s4"},
+    "pc5" : { "ip" : "10.0.3.5", "mac" : "02:00:00:00:00:05", "switch" : "s3"}
 }
 
 # Declare switches with their own ip and datapath_id (used to interact with OpenFlow REST API)
