@@ -30,7 +30,7 @@ The topology can be modified via the **topology/network.py** script:
 To create the python virtual environment and install the needed dependencies execute on a Bash shell the following commands:
 
 ```bash
-git clone <this-repository-url>
+git clone https://github.com/OmarPP03/sdn-slicing.git
 cd sdn-slicing
  
 # Python dependencies
