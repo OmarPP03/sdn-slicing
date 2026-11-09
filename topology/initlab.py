@@ -196,7 +196,7 @@ def get_ports() -> dict:
 # Deploy lab 
 def deploy_scenario(lab: Lab) -> None:
     Kathara.get_instance().deploy_lab(lab=lab)
-    print("Lab scenario created successfully!")
+    # print("Lab scenario created successfully!")
 
 
 def main():

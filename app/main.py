@@ -9,7 +9,7 @@ class App():
 
         # Clear all flow tables in the network
         clear_all_tables()
-        self.allocator = Allocator(links)
+        self.allocator = Allocator(links, True)
 
     def add(self, src: str, dst: str, rate: int) -> int:
         print(f"### ALLOCATING {rate} mbps ON ROUTE {src} to {dst} ###\n"
