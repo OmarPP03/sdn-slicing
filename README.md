@@ -51,5 +51,20 @@ sudo modprobe openvswitch
 ```
 **start.sh** removes any previous Kathara labs, builds and deploys the network (**topology/initlab.py**), waits until all switches are connected to the Ryu controller, and opens the CLI app (**app/main.py**).
 
+# Perform measurements
+
+Other then the CLI app, we can also perform measurements manually by running the **measurements/measure.py** script. Change the **SRC**, **DST** and **RATES** variables to obtain:
+
+- On the terminal, measured throughtput via **iperf3** (using UDP) with and without the designated algorithm;
+- On **/images**, a graph of the resulting comparision.
+ 
+With the Kathara lab running, open a terminal on the repositories root folder and run:
+
+```bash
+source .venv/bin/activate
+python3 -m measurements.measure
+```
+
+
 
 
